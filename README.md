@@ -19,3 +19,22 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+HR360 Frontend — Modern HR Analytics UI
+The HR360 frontend is a clean, modern, branded interface for uploading HR datasets, viewing analytics, and interacting with the HR360 backend API.
+
+Built with HTML, CSS, JavaScript, and designed for deployment on GitHub Pages / Vercel / Netlify.
+
+🎨 Features
+CSV upload UI
+
+API integration with HR360 backend
+
+Modern SaaS styling (dark mode, neon accents)
+
+Responsive layout
+
+Modular component structure
+
+Branding‑ready hero section
