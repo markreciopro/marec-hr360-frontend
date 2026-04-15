@@ -1,0 +1,373 @@
+/* ================================
+   MAREC HR360 — APP.JS
+   Universal HR Loader • Dashboard • Charts
+   ================================ */
+
+/* ============================================
+   1. API BASE — AUTO SWITCH (Local / Render)
+   ============================================ */
+
+const API_BASE =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+    ? "http://127.0.0.1:8000"            // Local FastAPI + Local PostgreSQL
+    : "https://marec-hr360-api.onrender.com"; // Render + Supabase
+
+
+/* ============================================
+   2. DEMO DATA (Fallback)
+   ============================================ */
+
+let demoData = [
+  { name: "John", dept: "HR",      salary: 40000, tenure: 1, risk_level: "HIGH",   risk_probability: 0.8 },
+  { name: "Ana",  dept: "IT",      salary: 90000, tenure: 5, risk_level: "LOW",    risk_probability: 0.1 },
+  { name: "Mike", dept: "Finance", salary: 50000, tenure: 2, risk_level: "MEDIUM", risk_probability: 0.5 }
+];
+
+
+/* ============================================
+   3. NAVIGATION
+   ============================================ */
+
+function showSection(id, btn) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+
+  if (id === "dashboard") loadDashboard();
+  if (id === "overview") startContractTypewriter();
+}
+
+
+/* ============================================
+   4. LOAD DASHBOARD (from API or fallback)
+   ============================================ */
+
+async function loadDashboard() {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/summary`);
+    const data = await res.json();
+
+    if (!data || !data.data) {
+      console.warn("Using demo data fallback");
+      renderDashboard({
+        headcount: 3,
+        attrition: 12,
+        high_risk: 1,
+        medium_risk: 1,
+        low_risk: 1,
+        avg_risk_probability: 0.46,
+        data: demoData,
+        ai_insights: ["Moderate attrition", "Some employees at risk"],
+        recommendations: ["Improve retention levers", "Increase engagement in HR & Finance"]
+      });
+      return;
+    }
+
+    renderDashboard(data);
+
+  } catch (err) {
+    console.error("Dashboard load failed:", err);
+    renderDashboard({
+      headcount: 3,
+      attrition: 12,
+      high_risk: 1,
+      medium_risk: 1,
+      low_risk: 1,
+      avg_risk_probability: 0.46,
+      data: demoData,
+      ai_insights: ["Moderate attrition", "Some employees at risk"],
+      recommendations: ["Improve retention levers", "Increase engagement in HR & Finance"]
+    });
+  }
+}
+
+
+/* ============================================
+   5. RENDER DASHBOARD
+   ============================================ */
+
+function renderDashboard(data) {
+  document.getElementById("headcount").innerText = data.headcount;
+  document.getElementById("attrition").innerText = data.attrition + "%";
+  document.getElementById("risk").innerText = data.high_risk;
+  document.getElementById("health").innerText = 100 - data.high_risk * 10;
+
+  buildDeptChart(data.data);
+  buildBellCurve(data.data);
+  buildRiskHistogram(data.data);
+  buildRiskScatter(data.data);
+  buildTable(data.data);
+
+  const insightsDiv = document.getElementById("insights");
+  const recommendDiv = document.getElementById("recommend");
+  insightsDiv.innerHTML = "";
+  recommendDiv.innerHTML = "";
+
+  (data.ai_insights || []).forEach(text => {
+    const span = document.createElement("span");
+    span.textContent = text;
+    insightsDiv.appendChild(span);
+  });
+
+  (data.recommendations || []).forEach(text => {
+    const span = document.createElement("span");
+    span.textContent = text;
+    recommendDiv.appendChild(span);
+  });
+}
+
+
+/* ============================================
+   6. CHARTS
+   ============================================ */
+
+let charts = {};
+
+function buildDeptChart(data) {
+  let map = {};
+  data.forEach(e => map[e.dept] = (map[e.dept] || 0) + 1);
+
+  if (charts.dept) charts.dept.destroy();
+
+  charts.dept = new Chart(document.getElementById("deptChart"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(map),
+      datasets: [{
+        data: Object.values(map),
+        backgroundColor: "rgba(76, 201, 240, 0.8)",
+        borderRadius: 6
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: "#cfcfcf" }, grid: { display: false } },
+        y: { ticks: { color: "#cfcfcf" }, grid: { color: "rgba(255,255,255,0.06)" } }
+      }
+    }
+  });
+}
+
+function buildBellCurve(data) {
+  let s = data.map(e => e.salary);
+  let avg = s.reduce((a, b) => a + b) / s.length;
+  let std = Math.sqrt(s.reduce((a, b) => a + (b - avg) ** 2, 0) / s.length);
+
+  let pts = [];
+  for (let x = avg - 3 * std; x <= avg + 3 * std; x += std / 4) {
+    let y = (1 / (std * Math.sqrt(2 * Math.PI))) *
+            Math.exp(-((x - avg) ** 2) / (2 * std ** 2));
+    pts.push({ x, y });
+  }
+
+  if (charts.bell) charts.bell.destroy();
+
+  charts.bell = new Chart(document.getElementById("bellCurveChart"), {
+    type: "line",
+    data: {
+      labels: pts.map(p => Math.round(p.x)),
+      datasets: [{
+        data: pts.map(p => p.y),
+        borderColor: "#4CC9F0",
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.35,
+        fill: true,
+        backgroundColor: "rgba(76, 201, 240, 0.12)"
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: "#cfcfcf" }, grid: { display: false } },
+        y: { ticks: { color: "#cfcfcf" }, grid: { color: "rgba(255,255,255,0.06)" } }
+      }
+    }
+  });
+}
+
+function buildRiskHistogram(data) {
+  let bins = [0, 0, 0, 0, 0];
+  data.forEach(e => {
+    let i = Math.min(4, Math.floor(e.risk_probability * 5));
+    bins[i]++;
+  });
+
+  if (charts.hist) charts.hist.destroy();
+
+  charts.hist = new Chart(document.getElementById("riskHistogram"), {
+    type: "bar",
+    data: {
+      labels: ["0–20", "20–40", "40–60", "60–80", "80–100"],
+      datasets: [{
+        data: bins,
+        backgroundColor: "rgba(229, 57, 53, 0.8)",
+        borderRadius: 6
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: "#cfcfcf" }, grid: { display: false } },
+        y: { ticks: { color: "#cfcfcf" }, grid: { color: "rgba(255,255,255,0.06)" } }
+      }
+    }
+  });
+}
+
+function buildRiskScatter(data) {
+  if (charts.scatter) charts.scatter.destroy();
+
+  charts.scatter = new Chart(document.getElementById("riskScatter"), {
+    type: "scatter",
+    data: {
+      datasets: [{
+        data: data.map(e => ({ x: e.salary, y: e.risk_probability })),
+        backgroundColor: "rgba(76, 201, 240, 0.9)",
+        pointRadius: 4
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          title: { display: true, text: "Salary", color: "#cfcfcf" },
+          ticks: { color: "#cfcfcf" },
+          grid: { color: "rgba(255,255,255,0.06)" }
+        },
+        y: {
+          title: { display: true, text: "Risk probability", color: "#cfcfcf" },
+          ticks: {
+            color: "#cfcfcf",
+            callback: v => (v * 100).toFixed(0) + "%"
+          },
+          grid: { color: "rgba(255,255,255,0.06)" }
+        }
+      }
+    }
+  });
+}
+
+
+/* ============================================
+   7. TABLE
+   ============================================ */
+
+function buildTable(data) {
+  const tbody = document.querySelector("#riskTable tbody");
+  tbody.innerHTML = "";
+  data.forEach(e => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${e.name}</td>
+      <td>${e.dept}</td>
+      <td>$${e.salary.toLocaleString()}</td>
+      <td>${e.tenure}</td>
+      <td>${e.risk_level}</td>
+      <td>${(e.risk_probability * 100).toFixed(1)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+
+/* ============================================
+   8. UNIVERSAL HR FILE UPLOADER
+   ============================================ */
+
+async function processFile() {
+  const file = document.getElementById("fileInput").files[0];
+  const statusEl = document.getElementById("uploadStatus");
+
+  if (!file) {
+    if (statusEl) statusEl.textContent = "Select a file to begin universal HR data loading.";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    if (statusEl) statusEl.textContent = "Processing: cleaning, normalizing, and streaming data into HR360…";
+
+    const uploadRes = await fetch(`${API_BASE}/api/v1/upload`, {
+      method: "POST",
+      body: formData
+    });
+
+    const uploadData = await uploadRes.json();
+    console.log("Upload response:", uploadData);
+
+    const dashRes = await fetch(`${API_BASE}/api/v1/summary`);
+    const dashData = await dashRes.json();
+
+    renderDashboard(dashData);
+    showSection("dashboard", document.querySelector('.nav-btn:nth-child(2)'));
+
+    if (statusEl) statusEl.textContent = "Data loaded successfully. Dashboard reflects the latest unified HR dataset.";
+
+  } catch (err) {
+    console.error("Upload or dashboard fetch failed", err);
+    if (statusEl) statusEl.textContent = "Upload failed. Check file format or try again.";
+  }
+}
+
+
+/* ============================================
+   9. CONTRACT TYPEWRITER
+   ============================================ */
+
+let contractIndex = 0;
+let charIndex = 0;
+let typing = false;
+
+function typeNextChar() {
+  const el = document.getElementById("contractCode");
+  if (!el) return;
+
+  if (contractIndex >= contractLines.length) {
+    typing = false;
+    return;
+  }
+
+  const currentLine = contractLines[contractIndex];
+  el.textContent =
+    contractLines.slice(0, contractIndex).join("\n") +
+    (contractIndex > 0 ? "\n" : "") +
+    currentLine.slice(0, charIndex + 1);
+
+  charIndex++;
+
+  if (charIndex < currentLine.length) {
+    setTimeout(typeNextChar, 35);
+  } else {
+    contractIndex++;
+    charIndex = 0;
+    setTimeout(typeNextChar, 180);
+  }
+}
+
+function startContractTypewriter() {
+  if (typing) return;
+  const el = document.getElementById("contractCode");
+  if (!el) return;
+  el.textContent = "";
+  contractIndex = 0;
+  charIndex = 0;
+  typing = true;
+  typeNextChar();
+}
+
+
+/* ============================================
+   10. INIT
+   ============================================ */
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadDashboard();
+  startContractTypewriter();
+});
