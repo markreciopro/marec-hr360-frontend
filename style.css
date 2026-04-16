@@ -371,34 +371,32 @@ canvas {
   filter: drop-shadow(0 0 12px rgba(76, 201, 240, 0.25));
 }
 
-/* Code block + typewriter */
-.code-block {
-  background: #05070b;
-  border-radius: 10px;
-  padding: 14px 16px;
-  font-family: "Source Code Pro", monospace;
-  font-size: 13px;
+/* Footer */
+.footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px;
+  color: #8d8d8d;
+  text-align: center;
+}
+
+/* Inputs */
+input[type="number"],
+input[type="text"],
+input[type="file"] {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
   color: #e5e5e5;
-  border: 1px solid rgba(255,255,255,0.08);
-  position: relative;
-  min-height: 120px;
-  white-space: pre-wrap;
+  font-size: 13px;
+  outline: none;
 }
 
-.code-block::after {
-  content: "";
-  position: absolute;
-  width: 8px;
-  height: 16px;
-  background: #4CC9F0;
-  right: 16px;
-  bottom: 16px;
-  animation: caret 0.9s steps(1) infinite;
-}
-
-@keyframes caret {
-  0%, 50% { opacity: 1; }
-  50.01%, 100% { opacity: 0; }
+input[type="number"]::placeholder,
+input[type="text"]::placeholder {
+  color: #777;
 }
 
 /* Responsive */
@@ -412,6 +410,7 @@ canvas {
     flex-direction: row;
     align-items: flex-start;
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .content {
